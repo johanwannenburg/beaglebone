@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdio.h>
+#include <unistd.h>
 using namespace std;
 
 int main()
@@ -7,7 +8,7 @@ int main()
     cout << "LED Flash start" << endl;
 
     FILE *LEDhandle = NULL;
-    char *LEDBrightness = "/sys/class/leds/beaglebone::usr3/brightness";
+    const char *LEDBrightness = "/sys/class/leds/beaglebone::usr3/brightness";
     
     for (int i = 0; i < 10; i++) {
         
@@ -27,3 +28,4 @@ int main()
     cout << "LED Flash end" << endl;
     return 0;
 }
+
