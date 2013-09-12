@@ -1,0 +1,190 @@
+//============================================================================
+// Name        : beaglebone.cpp
+// Author      : Johan Wannenburg
+// Version     :
+// Copyright   : Your copyright notice
+// Description : Hello World in C++, Ansi-style
+//============================================================================
+
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <cstdlib>
+using namespace std;
+
+#define MAX 64
+
+// Define Functions
+int pinMode(int, char*); // Exports pin and sets direction
+int digitalWrite(int, int); // Select pin and value
+int unexportPin(int); // Unexports pin after use
+int digitalRead(int); // Reads value of pin and returns value as "HIGH" or "LOW" / "1" or "0"
+int analogRead(int); // Reads value on analog pin and returns value
+
+
+int main() {
+
+	pinMode(60, "out");
+	pinMode(117, "in");
+	pinMode(49, "in");
+
+	cout << "program started" << endl;
+
+	while ( digitalRead(49) == 0) {
+
+
+		if (digitalRead(117) == 1) {
+			cout << "Hi" << endl;
+			digitalWrite(60, 1);
+		}
+		else {
+			cout << "Low" << endl;
+			digitalWrite(60, 0);
+		}
+	}
+
+	unexportPin(49);
+	unexportPin(60);
+	unexportPin(117);
+
+	cout << "program finished" << endl;
+
+	return 0;
+
+}
+
+int pinMode(int GPIOPin, char* direction )
+{
+	FILE *pinModeHandle = NULL;
+	char setValue[4], GPIOString[4], GPIODirection[MAX], str_direction[MAX];
+	sprintf(GPIOString, "%d", GPIOPin);
+	sprintf(str_direction, "%s", direction);
+	sprintf(GPIODirection, "/sys/class/gpio/gpio%d/direction", GPIOPin);
+
+	// Export the pin
+	if ((pinModeHandle = fopen("/sys/class/gpio/export", "ab")) == NULL) {
+		printf("Cannot export the GPIO pin.\n");
+		return 1;
+
+	}
+	strcpy(setValue, GPIOString);
+	fwrite(&setValue, sizeof(char), 3, pinModeHandle);
+	fclose(pinModeHandle);
+
+	char *str_input = {"in"};
+	char *str_output = {"out"};
+
+	if ( (strcmp(str_output, str_direction) == 0) || (strcmp(str_input, str_direction) == 0) ) {
+
+		// Set the pin direction "in/out"
+		if ((pinModeHandle = fopen(GPIODirection, "rb+")) == NULL) {
+			printf("Cannot open direction handle.\n");
+			return 1;
+
+		}
+		strcpy(setValue, str_direction); // writes in or out to setValue
+		fwrite(&setValue, sizeof(char), 3, pinModeHandle);
+		fclose(pinModeHandle);
+	}
+	else {
+		printf("Not a valid direction, pin can only be in or out.\n");
+		//return 0;
+		exit(0); // ends program
+	}
+
+
+	return 0;
+
+}
+
+int digitalWrite(int GPIOPin, int value)
+{
+	FILE *digitalWriteHandle = NULL;
+	char setValue[4], GPIOString[4], GPIOValue[MAX], str_value[4];
+	sprintf(GPIOString, "%d", GPIOPin);
+	sprintf(str_value, "%d", value);
+	sprintf(GPIOValue, "/sys/class/gpio/gpio%d/value", GPIOPin);
+
+	// Set value of the pin
+	if ((digitalWriteHandle = fopen(GPIOValue, "rb+")) == NULL) {
+		printf("Cannot open value handle.\n");
+		return 1;
+	}
+	strcpy(setValue, str_value);
+	fwrite(&setValue, sizeof(char), 1, digitalWriteHandle);
+	fclose(digitalWriteHandle);
+
+	return 0;
+
+}
+
+int digitalRead(int GPIOPin) {
+	FILE *digitalReadHandle = NULL;
+	char setValue[4], GPIOString[4], GPIOValue[MAX];
+	sprintf(GPIOString, "%d", GPIOPin);
+	sprintf(GPIOValue, "/sys/class/gpio/gpio%d/value", GPIOPin);
+
+	// Read pin value
+	if ((digitalReadHandle = fopen(GPIOValue, "rb+")) == NULL) {
+		printf("Cannot open value handle.\n");
+		return 1;
+	}
+	fread(&setValue, sizeof(char), 1, digitalReadHandle);
+	fclose(digitalReadHandle);
+
+	int readValue = atoi(setValue);
+
+	// send message to terminal for debugging purposes
+	//cout << "The value that was read in is: " << setValue[0] << endl;
+
+	return readValue;
+
+}
+
+int analogRead(int AINPin_Header) { // On pinout AIN0 - AIN5, interface AIN1 - AIN6
+	int AINPin_interface = AINPin_Header + 1;
+	// send message to terminal for debugging purposes
+	//cout << "Pin according to interface: " << AINPin_interface << endl;
+
+	FILE *analogReadHandle =NULL;
+	char setValue[5], AINString[4], AINValue[MAX];
+	sprintf(AINString, "%d", AINPin_interface);
+	sprintf(AINValue, "/sys/devices/platform/omap/tsc/ain%d", AINPin_interface);
+
+	// Read value of analog pin
+	if ((analogReadHandle = fopen(AINValue, "r")) == NULL) {
+		printf("Cannot open value handle.\n");
+		return 1;
+	}
+	fread(&setValue, sizeof(char), 4, analogReadHandle);
+	fclose(analogReadHandle);
+
+	int readValue = atoi(setValue);
+
+	// send message to terminal for debugging purposes
+	//cout << "The value (string) that was read in is: " << setValue << endl;
+	//cout << "The value (int) that was read in is: " << readValue << endl;
+
+	return readValue;
+
+}
+
+int unexportPin(int GPIOPin) {
+	FILE *unexportHandle = NULL;
+	char setValue[4], GPIOString[4];
+	sprintf(GPIOString, "%d", GPIOPin);
+
+	//Export the pin
+	if ((unexportHandle = fopen("/sys/class/gpio/unexport", "ab")) == NULL) {
+		printf("Cannot unexport the GPIO pin.\n");
+		return 1;
+	}
+	strcpy(setValue, GPIOString);
+	fwrite(&setValue, sizeof(char), 2, unexportHandle);
+	fclose(unexportHandle);
+
+	return 0;
+
+}
